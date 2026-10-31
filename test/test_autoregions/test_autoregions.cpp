@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
@@ -485,6 +486,27 @@ TEST(AutoRegionsFlow, 15_RejectsReparentingThatWouldCreateCycle) {
   EXPECT_EQ(pt_after->parent, 0);
   EXPECT_EQ(eu_after->parent, 0);
   AssertTreeOk(c.rm, "cycle-reparent-rejected");
+}
+
+
+TEST(AutoRegionsFlow, 16_InvalidCoordinatesAreIgnored) {
+  Ctx out_of_range;
+  StrHelper::strncpy(out_of_range.prefs.node_name, "NoPrefix", sizeof(out_of_range.prefs.node_name));
+  out_of_range.prefs.node_lat = 91.0f;
+  out_of_range.prefs.node_lon = -8.6f;
+  AutoRegions::checkRegionAutoAssign(out_of_range.rm, out_of_range.prefs, &out_of_range.fs);
+  EXPECT_EQ(out_of_range.rm.getCount(), 0);
+  EXPECT_FALSE(AutoRegions::isNodeInEurope());
+
+  Ctx not_finite;
+  StrHelper::strncpy(not_finite.prefs.node_name, "LI.Invalid", sizeof(not_finite.prefs.node_name));
+  not_finite.prefs.node_lat = std::numeric_limits<float>::quiet_NaN();
+  not_finite.prefs.node_lon = -9.1393f;
+  AutoRegions::checkRegionAutoAssign(not_finite.rm, not_finite.prefs, &not_finite.fs);
+  // Invalid coordinates must not drive polygon lookup; the documented name-prefix fallback remains available.
+  EXPECT_TRUE(HasAll(not_finite.rm, {"#pt", "#pt-lisboa", "#pt-lisboa-vale-do-tejo"}));
+  EXPECT_TRUE(AutoRegions::isNodeInEurope());
+  AssertTreeOk(not_finite.rm, "invalid-coordinates-prefix-fallback");
 }
 
 int main(int argc, char** argv) {

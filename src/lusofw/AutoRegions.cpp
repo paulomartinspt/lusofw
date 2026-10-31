@@ -3,6 +3,7 @@
 #include "AutoRegions.h"
 
 #include <Arduino.h>
+#include <math.h>
 #include <helpers/TxtDataHelpers.h>
 
 // Country selection — enable any combination. Each enabled country brings its
@@ -290,7 +291,15 @@ void AutoRegions::checkRegionAutoAssign(RegionMap& region_map, NodePrefs& prefs,
     //   2. otherwise the node-name prefix fallback
     //   3. nothing matched -> the compile-time default coordinates, for
     //      regulation only — no regions are created
-    bool loc_available = (prefs.node_lat != 0.0f || prefs.node_lon != 0.0f) &&
+    bool coords_configured = (prefs.node_lat != 0.0f || prefs.node_lon != 0.0f);
+    bool coords_valid = isfinite(prefs.node_lat) && isfinite(prefs.node_lon) &&
+                        prefs.node_lat >= -90.0f && prefs.node_lat <= 90.0f &&
+                        prefs.node_lon >= -180.0f && prefs.node_lon <= 180.0f;
+    if (coords_configured && !coords_valid) {
+        MESH_DEBUG_PRINTLN("Auto-Regions: invalid coordinates (lat=%.6f lon=%.6f); using name fallback",
+                           prefs.node_lat, prefs.node_lon);
+    }
+    bool loc_available = coords_configured && coords_valid &&
                          prefs.advert_loc_policy != ADVERT_LOC_NONE;
     float eval_lat = prefs.node_lat;
     float eval_lon = prefs.node_lon;
