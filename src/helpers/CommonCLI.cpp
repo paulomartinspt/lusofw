@@ -983,7 +983,7 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
   } else if (memcmp(config, "bridge.channel", 14) == 0) {
     sprintf(reply, "> %d", (uint32_t)_prefs->bridge_channel);
   } else if (memcmp(config, "bridge.secret", 13) == 0) {
-    sprintf(reply, "> %s", _prefs->bridge_secret);
+    strcpy(reply, _prefs->bridge_secret[0] ? "> configured" : "> not configured");
 #endif
   } else if (memcmp(config, "bootloader.ver", 14) == 0) {
   #ifdef NRF52_PLATFORM
