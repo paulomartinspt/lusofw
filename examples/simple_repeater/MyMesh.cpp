@@ -130,7 +130,7 @@ uint8_t MyMesh::handleLoginReq(const mesh::Identity& sender, const uint8_t* secr
       perms = PERM_ACL_GUEST;
     } else {
 #if MESH_DEBUG
-      MESH_DEBUG_PRINTLN("Invalid password: %s", data);
+      MESH_DEBUG_PRINTLN("Invalid login credentials");
 #endif
       return 0;
     }
