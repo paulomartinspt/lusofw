@@ -70,7 +70,7 @@ TEST(Defaults, BaselineOnFreshInstall) {
   EXPECT_EQ(prefs.flood_advert_interval, 23);
   EXPECT_EQ(prefs.path_hash_mode, 1);
   EXPECT_EQ(prefs.loop_detect, LOOP_DETECT_MODERATE);
-  EXPECT_EQ(prefs.cad_enabled, 1);
+  EXPECT_EQ(prefs.cad_enabled, 0);  // CAD is disabled on a fresh install
   EXPECT_EQ(prefs.advert_loc_policy, ADVERT_LOC_PREFS);
   EXPECT_EQ(prefs.radio_manual, 0);  // pristine prefs do not latch
 }
