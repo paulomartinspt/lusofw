@@ -52,6 +52,20 @@ static const CountryRegions ENABLED_COUNTRIES[] = {
 };
 static const int NUM_ENABLED_COUNTRIES = sizeof(ENABLED_COUNTRIES) / sizeof(ENABLED_COUNTRIES[0]);
 
+// Refuse a re-parent operation if it would make the region a descendant of itself,
+// or if the proposed ancestry is already malformed (missing parent / existing cycle).
+static bool canSafelyReparent(RegionMap& region_map, const RegionEntry& region, uint16_t parent_id) {
+    uint16_t ancestor_id = parent_id;
+    for (int hops = 0; hops <= MAX_REGION_ENTRIES; hops++) {
+        if (ancestor_id == 0) return true;
+        if (ancestor_id == region.id) return false;
+        const RegionEntry* ancestor = region_map.findById(ancestor_id);
+        if (!ancestor) return false;
+        ancestor_id = ancestor->parent;
+    }
+    return false;  // ancestry did not reach the wildcard within the map's maximum depth
+}
+
 bool AutoRegions::in_europe_flag = false;
 
 static const char* portugalRfRegion(float freq) {
@@ -148,8 +162,12 @@ bool AutoRegions::inject_hierarchy(RegionMap& region_map, const bool* country_ma
             // is not on that chain — before accepting the new parent.
             uint16_t expected_parent = get_parent_for_region(region_map, name);
             if (r->parent != expected_parent) {
-                r->parent = expected_parent;
-                changed = true;
+                if (canSafelyReparent(region_map, *r, expected_parent)) {
+                    r->parent = expected_parent;
+                    changed = true;
+                } else {
+                    MESH_DEBUG_PRINTLN("Auto-Regions: rejected cyclic/invalid parent for '%s'", name);
+                }
             }
         }
     }
@@ -207,8 +225,12 @@ bool AutoRegions::apply_dynamic_region(RegionMap& region_map, const char* reg_na
             MESH_DEBUG_PRINTLN("Auto-Regions: could not add '%s' (region map full)", reg_name);
         }
     } else if (dynamic_region->parent != parent_id) {
-        dynamic_region->parent = parent_id;
-        changed = true;
+        if (canSafelyReparent(region_map, *dynamic_region, parent_id)) {
+            dynamic_region->parent = parent_id;
+            changed = true;
+        } else {
+            MESH_DEBUG_PRINTLN("Auto-Regions: rejected cyclic/invalid parent for '%s'", reg_name);
+        }
     }
     changed |= enable_region_path(region_map, reg_name);
     return changed;

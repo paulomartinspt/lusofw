@@ -462,6 +462,23 @@ TEST(AutoRegionsFlow, 14_SharedBoundaryDeterminism) {
   EXPECT_TRUE(AutoRegions::isNodeInEurope());
 }
 
+TEST(AutoRegionsFlow, 15_RejectsReparentingThatWouldCreateCycle) {
+  Ctx c;
+  StrHelper::strncpy(c.prefs.node_name, "CY.Node", sizeof(c.prefs.node_name));
+
+  // Simulate a pre-existing user hierarchy in which #europe is nested below #pt.
+  // Re-parenting #pt below #europe would create a cycle and must be rejected.
+  RegionEntry* pt = c.rm.putRegion("#pt", 0);
+  ASSERT_NE(pt, nullptr);
+  RegionEntry* eu = c.rm.putRegion("#europe", pt->id);
+  ASSERT_NE(eu, nullptr);
+
+  ReevaluateAt(c, 38.7223, -9.1393);
+  EXPECT_EQ(Find(c.rm, "#pt")->parent, 0);
+  EXPECT_EQ(Find(c.rm, "#europe")->parent, Find(c.rm, "#pt")->id);
+  AssertTreeOk(c.rm, "cycle-reparent-rejected");
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
