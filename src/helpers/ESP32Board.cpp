@@ -33,7 +33,7 @@ bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
 
   if (ota_server) {
     String ip = WiFi.softAPIP().toString();
-    snprintf(reply, MAX_PACKET_PAYLOAD,
+    snprintf(reply, 161,
              "OTA already running: http://%s/update Wi-Fi password: %s HTTP user: meshcore HTTP password: %s",
              ip.c_str(), wifi_password, http_password);
     return true;
@@ -61,7 +61,7 @@ bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
   }
 
   String ip = WiFi.softAPIP().toString();
-  snprintf(reply, MAX_PACKET_PAYLOAD,
+  snprintf(reply, 161,
            "Started: http://%s/update Wi-Fi password: %s HTTP user: meshcore HTTP password: %s",
            ip.c_str(), wifi_password, http_password);
   // Never put either temporary credential in serial/debug logs.
