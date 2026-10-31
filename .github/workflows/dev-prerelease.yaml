@@ -168,13 +168,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install PlatformIO
+      - name: Install pinned PlatformIO Core
         shell: bash
-        run: pip install --upgrade platformio
-
-      - name: Update PlatformIO dependencies
-        shell: bash
-        run: pio pkg update -d . -e ${{ matrix.firmware }}
+        run: python -m pip install -r requirements-platformio.txt
 
       - name: Extract version
         run: |

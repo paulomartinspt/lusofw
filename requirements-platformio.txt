@@ -1,0 +1,2 @@
+# PlatformIO Core version validated by the native matrix and ESP32 OTA compile workflow.
+platformio==6.2.0
