@@ -12,33 +12,94 @@
 #include <SPIFFS.h>
 
 bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
-  inhibit_sleep = true;   // prevent sleep during OTA
-  WiFi.softAP("MeshCore-OTA", NULL);
-
-  sprintf(reply, "Started: http://%s/update", WiFi.softAPIP().toString().c_str());
-  MESH_DEBUG_PRINTLN("startOTAUpdate: %s", reply);
-
+  // Keep a single OTA server/session alive; repeated CLI requests return the
+  // active credentials instead of creating another listener on port 80.
+  static AsyncWebServer* ota_server = nullptr;
+  static char wifi_password[17];
+  static char http_password[17];
   static char id_buf[60];
-  sprintf(id_buf, "%s (%s)", id, getManufacturerName());
   static char home_buf[90];
-  sprintf(home_buf, "<H2>Hi! I am a MeshCore Repeater. ID: %s</H2>", id);
+
+  auto generate_password = [](char* password) {
+    uint8_t random_bytes[8];
+    for (size_t i = 0; i < sizeof(random_bytes); i += sizeof(uint32_t)) {
+      uint32_t random_value = esp_random();
+      memcpy(&random_bytes[i], &random_value, sizeof(random_value));
+    }
+    for (size_t i = 0; i < sizeof(random_bytes); i++) {
+      snprintf(&password[i * 2], 3, "%02x", random_bytes[i]);
+    }
+  };
+
+  if (ota_server) {
+    String ip = WiFi.softAPIP().toString();
+    snprintf(reply, MAX_PACKET_PAYLOAD,
+             "OTA already running: http://%s/update Wi-Fi password: %s HTTP user: meshcore HTTP password: %s",
+             ip.c_str(), wifi_password, http_password);
+    return true;
+  }
+
+  inhibit_sleep = true;   // prevent sleep during OTA
+  // Enable the Wi-Fi radio before requesting random bytes from the ESP32 RNG.
+  if (!WiFi.mode(WIFI_AP)) {
+    WiFi.mode(WIFI_OFF);
+    inhibit_sleep = false;
+    strcpy(reply, "Error: could not enable Wi-Fi for OTA");
+    return false;
+  }
+  delay(1);
+
+  // Use independent high-entropy credentials for Wi-Fi association and HTTP auth.
+  generate_password(wifi_password);
+  generate_password(http_password);
+
+  if (!WiFi.softAP("MeshCore-OTA", wifi_password)) {
+    WiFi.mode(WIFI_OFF);
+    inhibit_sleep = false;
+    strcpy(reply, "Error: could not start secure OTA access point");
+    return false;
+  }
+
+  String ip = WiFi.softAPIP().toString();
+  snprintf(reply, MAX_PACKET_PAYLOAD,
+           "Started: http://%s/update Wi-Fi password: %s HTTP user: meshcore HTTP password: %s",
+           ip.c_str(), wifi_password, http_password);
+  // Never put either temporary credential in serial/debug logs.
+  MESH_DEBUG_PRINTLN("startOTAUpdate: secure OTA access point started at %s", ip.c_str());
+
+  snprintf(id_buf, sizeof(id_buf), "%s (%s)", id, getManufacturerName());
+  snprintf(home_buf, sizeof(home_buf), "<H2>Hi! I am a MeshCore Repeater. ID: %s</H2>", id);
 
   AsyncWebServer* server = new AsyncWebServer(80);
+  if (!server) {
+    WiFi.softAPdisconnect(true);
+    inhibit_sleep = false;
+    strcpy(reply, "Error: could not allocate OTA web server");
+    return false;
+  }
 
   server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate("meshcore", http_password)) {
+      request->requestAuthentication();
+      return;
+    }
     request->send(200, "text/html", home_buf);
   });
   server->on("/log", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!request->authenticate("meshcore", http_password)) {
+      request->requestAuthentication();
+      return;
+    }
     request->send(SPIFFS, "/packet_log", "text/plain");
   });
 
   AsyncElegantOTA.setID(id_buf);
-  AsyncElegantOTA.begin(server);    // Start ElegantOTA
+  AsyncElegantOTA.begin(server, "meshcore", http_password); // Require HTTP authentication
   server->begin();
+  ota_server = server;
 
   return true;
 }
-
 #else
 bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
   return false; // not supported
