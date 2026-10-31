@@ -18,6 +18,7 @@ on:
       - "src/helpers/ESP32Board.cpp"
       - "src/helpers/ESP32Board.h"
       - "platformio.ini"
+      - "requirements-platformio.txt"
       - "variants/heltec_v3/**"
       - "arch/esp32/**"
       - ".github/workflows/esp32-ota-build.yaml"
