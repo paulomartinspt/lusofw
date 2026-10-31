@@ -13,6 +13,14 @@
 
 bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
   inhibit_sleep = true;   // prevent sleep during OTA
+  // Enable the Wi-Fi radio before requesting random bytes from the ESP32 RNG.
+  if (!WiFi.mode(WIFI_AP)) {
+    inhibit_sleep = false;
+    strcpy(reply, "Error: could not enable Wi-Fi for OTA");
+    return false;
+  }
+  delay(1);
+
   // Use a fresh high-entropy credential for every OTA session.
   uint8_t random_bytes[8];
   static char ota_password[17];
