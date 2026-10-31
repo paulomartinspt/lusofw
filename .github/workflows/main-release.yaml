@@ -1,7 +1,7 @@
 name: Build lusofw (main release)
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   check:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.decide.outputs.should_run }}
@@ -79,6 +81,8 @@ jobs:
           fi
 
   build:
+    permissions:
+      contents: read
     needs: check
     if: needs.check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
@@ -183,6 +187,8 @@ jobs:
           path: out
 
   release:
+    permissions:
+      contents: write
     needs: [check, build]
     if: needs.check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
