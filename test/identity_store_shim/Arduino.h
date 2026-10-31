@@ -100,6 +100,7 @@ public:
     return File::makeRead(&it->second);
   }
 
+  bool mkdir(const char*) { return true; }
   bool exists(const char* path) const { return _files.find(path) != _files.end(); }
   bool remove(const char* path) { return _files.erase(path) != 0; }
 
