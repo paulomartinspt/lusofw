@@ -1356,7 +1356,9 @@ void MyMesh::saveIdentity(const mesh::LocalIdentity &new_id) {
 #else
 #error "need to define saveIdentity()"
 #endif
-  store.save("_main", new_id);
+  if (!store.save("_main", new_id)) {
+    MESH_DEBUG_PRINTLN("MyMesh::saveIdentity: failed to persist local identity");
+  }
 }
 
 void MyMesh::clearStats() {

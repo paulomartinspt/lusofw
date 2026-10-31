@@ -21,6 +21,7 @@ jobs:
           - native_lusofw
           - native_lusofw_pa
           - native_lusofw_cap10
+          - native_identity_store
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
