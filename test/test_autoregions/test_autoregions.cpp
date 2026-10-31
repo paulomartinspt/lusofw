@@ -474,8 +474,16 @@ TEST(AutoRegionsFlow, 15_RejectsReparentingThatWouldCreateCycle) {
   ASSERT_NE(eu, nullptr);
 
   ReevaluateAt(c, 38.7223, -9.1393);
-  EXPECT_EQ(Find(c.rm, "#pt")->parent, 0);
-  EXPECT_EQ(Find(c.rm, "#europe")->parent, Find(c.rm, "#pt")->id);
+  const RegionEntry* pt_after = Find(c.rm, "#pt");
+  const RegionEntry* eu_after = Find(c.rm, "#europe");
+  ASSERT_NE(pt_after, nullptr);
+  ASSERT_NE(eu_after, nullptr);
+
+  // The proposed #pt -> #europe move is rejected while #europe is still
+  // below #pt. The later dynamic-region pass normalizes #europe to the root.
+  // Neither entry should end up pointing into the other's ancestry.
+  EXPECT_EQ(pt_after->parent, 0);
+  EXPECT_EQ(eu_after->parent, 0);
   AssertTreeOk(c.rm, "cycle-reparent-rejected");
 }
 
