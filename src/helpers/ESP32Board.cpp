@@ -13,9 +13,25 @@
 
 bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
   inhibit_sleep = true;   // prevent sleep during OTA
-  WiFi.softAP("MeshCore-OTA", NULL);
+  // Use a fresh high-entropy credential for every OTA session.
+  uint8_t random_bytes[8];
+  static char ota_password[17];
+  for (size_t i = 0; i < sizeof(random_bytes); i += sizeof(uint32_t)) {
+    uint32_t random_value = esp_random();
+    memcpy(&random_bytes[i], &random_value, sizeof(random_value));
+  }
+  for (size_t i = 0; i < sizeof(random_bytes); i++) {
+    snprintf(&ota_password[i * 2], 3, "%02x", random_bytes[i]);
+  }
 
-  sprintf(reply, "Started: http://%s/update", WiFi.softAPIP().toString().c_str());
+  if (!WiFi.softAP("MeshCore-OTA", ota_password)) {
+    inhibit_sleep = false;
+    strcpy(reply, "Error: could not start secure OTA access point");
+    return false;
+  }
+
+  sprintf(reply, "Started: http://%s/update Wi-Fi password: %s",
+          WiFi.softAPIP().toString().c_str(), ota_password);
   MESH_DEBUG_PRINTLN("startOTAUpdate: %s", reply);
 
   static char id_buf[60];
@@ -33,7 +49,7 @@ bool ESP32Board::startOTAUpdate(const char* id, char reply[]) {
   });
 
   AsyncElegantOTA.setID(id_buf);
-  AsyncElegantOTA.begin(server);    // Start ElegantOTA
+  AsyncElegantOTA.begin(server, "meshcore", ota_password); // Require HTTP authentication
   server->begin();
 
   return true;
