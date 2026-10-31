@@ -74,3 +74,8 @@ TEST(IdentityStore, SaveReturnsFalseWhenFileCannotBeOpened) {
   EXPECT_FALSE(store.save("main", identity));
   EXPECT_FALSE(store.save("main", identity, "Repeater"));
 }
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
